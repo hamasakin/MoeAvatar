@@ -271,7 +271,23 @@ export default function App() {
   const [aiRenderedImage, setAiRenderedImage] = useState<string | null>(null);
   const [isAiRendering, setIsAiRendering] = useState(false);
   const [aiMode, setAiMode] = useState<'original' | 'pipeline'>('original');
-  const [customAiStyles, setCustomAiStyles] = useState<any[]>([]);
+  const [customAiStyles, setCustomAiStyles] = useState<any[]>(() => {
+    try {
+      const saved = localStorage.getItem('moe-avatar-custom-styles');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      console.error("Failed to load custom styles from localStorage", e);
+      return [];
+    }
+  });
+  
+  useEffect(() => {
+    try {
+      localStorage.setItem('moe-avatar-custom-styles', JSON.stringify(customAiStyles));
+    } catch (e) {
+      console.error("Failed to save custom styles to localStorage", e);
+    }
+  }, [customAiStyles]);
   const [isGeneratingRandom, setIsGeneratingRandom] = useState(false);
   const [step, setStep] = useState<'upload' | 'choose' | 'select' | 'edit'>('upload');
   
