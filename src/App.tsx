@@ -10,7 +10,28 @@ import { PhotoProvider, PhotoView } from 'react-photo-view';
 import 'react-photo-view/dist/react-photo-view.css';
 import { config } from './config';
 
-// OpenAI API Helpers
+// Helpers
+async function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function urlToDataUrl(url: string): Promise<string> {
+  if (url.startsWith('data:')) return url;
+  const response = await fetch(url);
+  const blob = await response.blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
 async function openaiChat(messages: any[], responseFormat?: 'json_object') {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 60000);
@@ -255,27 +276,23 @@ export default function App() {
   const [step, setStep] = useState<'upload' | 'choose' | 'select' | 'edit'>('upload');
   
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const result = event.target?.result as string;
-        setImage(result);
-        setOriginalImage(result);
-        setStep('choose');
-      };
-      reader.readAsDataURL(file);
+      const url = URL.createObjectURL(file);
+      setImage(url);
+      setOriginalImage(url);
+      setStep('choose');
     }
   };
 
-  const analyzeImage = async (base64Data: string) => {
+  const analyzeImage = async (url: string) => {
     setIsAnalyzing(true);
     try {
       const prompt = "Detect the faces or main characters in this anime/ACG image. Return exactly 4 bounding boxes as a JSON array of objects with ymin, xmin, ymax, xmax (normalized 0-1000). Focus on different headshots, upper body parts, or artistic crops suitable for avatars. If there's only one character, provide 4 different zoom levels or angles. OUTPUT ONLY JSON.";
 
+      const base64Data = await urlToDataUrl(url);
       const text = await openaiChat([
         {
           role: "user",
@@ -293,7 +310,7 @@ export default function App() {
       detectedBoxes = detectedBoxes.slice(0, 4);
 
       const newCrops: CropOption[] = await Promise.all(detectedBoxes.map(async (box, index) => {
-        const previewUrl = await createCropPreview(base64Data, box);
+        const previewUrl = await createCropPreview(url, box);
         return { id: `crop-${index}`, box, previewUrl };
       }));
 
@@ -308,7 +325,7 @@ export default function App() {
         { ymin: 200, xmin: 450, ymax: 700, xmax: 950 },
       ];
       const newCrops: CropOption[] = await Promise.all(fallbacks.map(async (box, index) => {
-        const previewUrl = await createCropPreview(base64Data, box);
+        const previewUrl = await createCropPreview(url, box);
         return { id: `fallback-${index}`, box, previewUrl };
       }));
       setCrops(newCrops);
@@ -371,7 +388,7 @@ export default function App() {
   };
 
   const applyAiStyle = async (styleId: string, stylesList = [...customAiStyles, ...AI_STYLES]) => {
-    if (!canvasRef.current || isAiRendering || !image) return;
+    if (isAiRendering || !image) return;
     
     setIsAiRendering(true);
     setActiveAiStyle(styleId);
@@ -380,14 +397,17 @@ export default function App() {
       const style = stylesList.find(s => s.id === styleId);
       if (!style) return;
 
-      const canvas = canvasRef.current;
+      const base64Input = await urlToDataUrl(image);
       // Use standard descriptive prompt for drawing models
       const prompt = `Based on an anime character avatar, please generate a high-quality stylized version in ${style.en} style. ${style.prompt}. The character identity and composition must be preserved.`;
 
-      const base64Data = await geminiGenerateImage(prompt, image);
-      setAiRenderedImage(base64Data);
-      // Explicitly call render for insurance
-      renderFinalCanvas(base64Data);
+      const base64Data = await geminiGenerateImage(prompt, base64Input);
+      
+      // Convert result back to Blob URL to keep state light
+      const res = await fetch(base64Data);
+      const blob = await res.blob();
+      const resultUrl = URL.createObjectURL(blob);
+      setAiRenderedImage(resultUrl);
     } catch (error) {
       console.error("AI Rendering failed:", error);
       alert(t.aiError);
@@ -397,90 +417,83 @@ export default function App() {
     }
   };
 
-  const renderFinalCanvas = (sourceOverride?: string) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const source = sourceOverride || aiRenderedImage || image;
-    if (!source) {
-      console.warn("No source found for Canvas render!");
-      return;
-    }
-
-    const size = 800;
-    canvas.width = size;
-    canvas.height = size;
-
-    const img = new Image();
-    img.onload = () => {
-      // Basic check: only clear and draw if the image has dimensions
-      if (img.width === 0 || img.height === 0) return;
-
-      ctx.save();
-      ctx.clearRect(0, 0, size, size);
-      
-      const ratio = img.width / img.height;
-      let drawW, drawH, drawX, drawY;
-      
-      if (ratio > 1) {
-        drawW = size;
-        drawH = size / ratio;
-      } else {
-        drawH = size;
-        drawW = size * ratio;
+  const getProcessedImageData = (source: string): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const size = 800;
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        reject(new Error("Failed to get canvas context"));
+        return;
       }
-      
-      drawX = (size - drawW) / 2;
-      drawY = (size - drawH) / 2;
-      
-      ctx.drawImage(img, drawX, drawY, drawW, drawH);
-      ctx.restore();
-    };
-    img.onerror = () => {
-      console.error("Failed to load image for canvas:", source.substring(0, 50) + "...");
-    };
-    img.src = source;
-    if (img.complete) {
-      img.onload(new Event('load') as any);
-    }
+
+      const img = new Image();
+      img.onload = () => {
+        if (img.width === 0 || img.height === 0) {
+          reject(new Error("Image has no dimensions"));
+          return;
+        }
+
+        ctx.clearRect(0, 0, size, size);
+        const ratio = img.width / img.height;
+        let drawW, drawH, drawX, drawY;
+        
+        if (ratio > 1) {
+          drawW = size;
+          drawH = size / ratio;
+        } else {
+          drawH = size;
+          drawW = size * ratio;
+        }
+        
+        drawX = (size - drawW) / 2;
+        drawY = (size - drawH) / 2;
+        
+        ctx.drawImage(img, drawX, drawY, drawW, drawH);
+        resolve(canvas.toDataURL('image/png'));
+      };
+      img.onerror = () => reject(new Error("Failed to load image"));
+      img.src = source;
+    });
   };
 
   useEffect(() => {
-    if (step === 'edit') {
-      // Use both requestAnimationFrame and a small timeout as double-insurance for DOM ready
-      const handle = requestAnimationFrame(() => {
-        renderFinalCanvas();
-        // Sometimes one frame isn't enough for layout transition
-        setTimeout(renderFinalCanvas, 100);
-      });
-      return () => cancelAnimationFrame(handle);
-    }
+    // No-op: Canvas rendering is now handled on-demand during download
   }, [step, selectedCrop, activeFilter, image, originalImage, aiRenderedImage, activeAiStyle, aiMode]);
 
-  const handleDownload = () => {
-    if (!canvasRef.current) return;
+  const handleDownload = async () => {
+    const source = aiRenderedImage || image;
+    if (!source) return;
     
-    const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = 800;
-    tempCanvas.height = 800;
-    const tempCtx = tempCanvas.getContext('2d');
-    
-    if (tempCtx) {
-      // Use the explicit filter string instead of getComputedStyle
-      tempCtx.filter = (activeFilter as any).filter || 'none';
-      tempCtx.drawImage(canvasRef.current, 0, 0);
+    try {
+      const processedDataUrl = await getProcessedImageData(source);
       
-      const dataUrl = tempCanvas.toDataURL('image/png');
-      const link = document.createElement('a');
-      link.download = `moe-avatar-${Date.now()}.png`;
-      link.href = dataUrl;
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = 800;
+      tempCanvas.height = 800;
+      const tempCtx = tempCanvas.getContext('2d');
       
-      // Append to body to ensure it works in all environments/iframes
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      if (tempCtx) {
+        const img = new Image();
+        img.onload = () => {
+          tempCtx.filter = (activeFilter as any).filter || 'none';
+          tempCtx.drawImage(img, 0, 0);
+          
+          const dataUrl = tempCanvas.toDataURL('image/png');
+          const link = document.createElement('a');
+          link.download = `moe-avatar-${Date.now()}.png`;
+          link.href = dataUrl;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        };
+        img.src = processedDataUrl;
+      }
+    } catch (error) {
+      console.error("Download failed:", error);
+      alert("Failed to prepare download. Please try again.");
     }
   };
 
@@ -613,8 +626,6 @@ export default function App() {
                         box: { ymin: 0, xmin: 0, ymax: 1000, xmax: 1000 },
                         previewUrl: originalImage
                       });
-                      // Force immediate render of the full image on canvas
-                      setTimeout(() => renderFinalCanvas(originalImage), 50);
                     }
                     setStep('edit');
                     // Analyze in background in case user switches to crop mode later
@@ -726,12 +737,8 @@ export default function App() {
                           <img 
                             src={aiRenderedImage || image || ''}
                             alt="Preview"
-                            className="w-full h-full object-cover transition-all duration-500"
+                            className="w-full h-full object-contain transition-all duration-500"
                             style={{ filter: activeFilter.filter }}
-                          />
-                          <canvas 
-                            ref={canvasRef} 
-                            className="hidden"
                           />
                           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors flex items-center justify-center">
                             <div className="p-4 bg-white/90 backdrop-blur rounded-2xl shadow-xl text-[#111827] opacity-0 group-hover:opacity-100 transition-all scale-90 group-hover:scale-100">
