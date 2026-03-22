@@ -644,8 +644,6 @@ export default function App() {
                       });
                     }
                     setStep('edit');
-                    // Analyze in background in case user switches to crop mode later
-                    if (originalImage && crops.length === 0) analyzeImage(originalImage);
                   }}
                   className="group bg-white border border-[#E5E7EB] rounded-[40px] p-10 text-left transition-all hover:border-[#111827] hover:shadow-2xl hover:-translate-y-1"
                 >
@@ -888,7 +886,15 @@ export default function App() {
 
                     <div className="grid grid-cols-2 gap-4">
                       <button 
-                        onClick={() => { setStep('select'); setAiRenderedImage(null); setActiveAiStyle(null); }}
+                        onClick={() => { 
+                          if (selectedCrop?.id === 'full-image') {
+                            setStep('choose');
+                          } else {
+                            setStep('select');
+                          }
+                          setAiRenderedImage(null); 
+                          setActiveAiStyle(null); 
+                        }}
                         className="py-4 bg-white text-[#6B7280] rounded-2xl font-bold border border-[#E5E7EB] hover:bg-[#F9FAFB] transition-all flex items-center justify-center gap-2"
                       >
                         <ChevronLeft className="w-4 h-4" />
