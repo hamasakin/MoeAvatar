@@ -8,10 +8,10 @@ export default defineConfig(({mode}) => {
   return {
     plugins: [react(), tailwindcss()],
     define: {
-      'process.env.VITE_API_BASE_URL': JSON.stringify(env.VITE_API_BASE_URL),
-      'process.env.VITE_API_KEY': JSON.stringify(env.VITE_API_KEY),
-      'process.env.VITE_ANALYSIS_MODEL': JSON.stringify(env.VITE_ANALYSIS_MODEL),
-      'process.env.VITE_IMAGE_MODEL': JSON.stringify(env.VITE_IMAGE_MODEL),
+      'import.meta.env.VITE_API_BASE_URL': JSON.stringify(env.VITE_API_BASE_URL),
+      'import.meta.env.VITE_API_KEY': JSON.stringify(env.VITE_API_KEY),
+      'import.meta.env.VITE_ANALYSIS_MODEL': JSON.stringify(env.VITE_ANALYSIS_MODEL),
+      'import.meta.env.VITE_IMAGE_MODEL': JSON.stringify(env.VITE_IMAGE_MODEL),
     },
     resolve: {
       alias: {
