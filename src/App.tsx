@@ -798,102 +798,106 @@ export default function App() {
                         </div>
                       </div>
 
-                      <div className="space-y-4">
-                        <div className="relative">
-                          <select 
-                            value={activeAiStyle || ''}
-                            onChange={(e) => e.target.value && applyAiStyle(e.target.value)}
-                            disabled={isAiRendering}
-                            className="w-full bg-[#F9FAFB] border border-[#E5E7EB] rounded-2xl px-5 py-4 text-sm font-bold text-[#111827] appearance-none focus:outline-none focus:ring-2 focus:ring-[#6366F1]/20 transition-all disabled:opacity-50"
+                      <div className="grid grid-cols-4 gap-3">
+                        {AI_STYLES.map((style) => (
+                          <button
+                            key={style.id}
+                            onClick={() => applyAiStyle(style.id)}
+                            className={`aspect-square rounded-2xl text-[10px] font-bold flex flex-col items-center justify-center gap-2 transition-all border ${
+                              activeAiStyle === style.id 
+                                ? 'bg-[#6366F1] text-white border-[#6366F1] ring-4 ring-[#EEF2FF]' 
+                                : 'bg-white text-[#6B7280] border-[#EEF2FF] hover:border-[#6366F1]/30'
+                            }`}
                           >
-                            <option value="" disabled>{t.aiStyleSelect}</option>
-                            <optgroup label="Standard Styles">
-                              {AI_STYLES.map(s => (
-                                <option key={s.id} value={s.id}>{lang === 'zh' ? s.zh : s.en}</option>
-                              ))}
-                            </optgroup>
-                            {customAiStyles.length > 0 && (
-                              <optgroup label="Custom Styles">
-                                {customAiStyles.map(s => (
-                                  <option key={s.id} value={s.id}>{lang === 'zh' ? s.zh : s.en}</option>
-                                ))}
-                              </optgroup>
-                            )}
-                          </select>
-                          <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none">
-                            <ChevronRight className="w-4 h-4 text-[#9CA3AF] rotate-90" />
-                          </div>
-                        </div>
-
-                        <div className="flex gap-2">
-                          <button 
-                            onClick={() => activeAiStyle && applyAiStyle(activeAiStyle)}
-                            disabled={!activeAiStyle || isAiRendering}
-                            className="flex-1 bg-[#111827] text-white py-4 rounded-2xl text-xs font-bold hover:bg-black transition-all flex items-center justify-center gap-2 disabled:opacity-30"
-                          >
-                            {isAiRendering ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-                            {t.aiRerender}
+                            {lang === 'zh' ? style.zh : style.en}
                           </button>
-                          <button 
-                            onClick={generateRandomStyle}
-                            disabled={isGeneratingRandom || isAiRendering}
-                            className="flex-1 bg-white border border-[#E5E7EB] text-[#6366F1] py-4 rounded-2xl text-xs font-bold hover:bg-[#F9FAFB] transition-all flex items-center justify-center gap-2 disabled:opacity-30"
-                          >
-                            {isGeneratingRandom ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-                            {t.aiRandom}
-                          </button>
-                        </div>
+                        ))}
                       </div>
 
-                      {isAiRendering && (
-                        <div className="flex items-center justify-center gap-3 py-2">
-                          <div className="w-1.5 h-1.5 bg-[#6366F1] rounded-full animate-bounce" />
-                          <div className="w-1.5 h-1.5 bg-[#6366F1] rounded-full animate-bounce [animation-delay:0.2s]" />
-                          <div className="w-1.5 h-1.5 bg-[#6366F1] rounded-full animate-bounce [animation-delay:0.4s]" />
-                          <p className="text-[10px] text-[#6366F1] font-bold uppercase tracking-widest">{t.aiGenerating}</p>
+                      {customAiStyles.length > 0 && (
+                        <div className="space-y-4 pt-4 border-t border-[#F3F4F6]">
+                          <div className="grid grid-cols-4 gap-3">
+                            {customAiStyles.map((style) => (
+                              <button
+                                key={style.id}
+                                onClick={() => applyAiStyle(style.id)}
+                                className={`aspect-square rounded-2xl text-[10px] font-bold flex flex-col items-center justify-center gap-2 transition-all border ${
+                                  activeAiStyle === style.id 
+                                    ? 'bg-[#10B981] text-white border-[#10B981] ring-4 ring-[#ECFDF5]' 
+                                    : 'bg-white text-[#6B7280] border-[#ECFDF5] hover:border-[#10B981]/30'
+                                }`}
+                              >
+                                {lang === 'zh' ? style.zh : style.en}
+                              </button>
+                            ))}
+                          </div>
                         </div>
                       )}
+
+                      <div className="flex gap-4">
+                        <button 
+                          onClick={generateRandomStyle}
+                          disabled={isGeneratingRandom}
+                          className="flex-1 py-4 bg-white border-2 border-[#111827] text-[#111827] rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-[#F9FAFB] transition-all disabled:opacity-50"
+                        >
+                          {isGeneratingRandom ? (
+                            <RefreshCw className="w-4 h-4 animate-spin text-[#6366F1]" />
+                          ) : (
+                            <Zap className="w-4 h-4 text-[#F59E0B]" />
+                          )}
+                          {isGeneratingRandom ? t.aiRandomGenerating : t.aiRandom}
+                        </button>
+
+                        <button 
+                          onClick={() => applyAiStyle(activeAiStyle as string)}
+                          disabled={!activeAiStyle || isAiRendering}
+                          className="flex-1 py-4 bg-[#111827] text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-black transition-all disabled:opacity-30"
+                        >
+                          {isAiRendering ? (
+                            <RefreshCw className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <RefreshCw className="w-4 h-4" />
+                          )}
+                          {isAiRendering ? t.aiGenerating : t.aiRerender}
+                        </button>
+                      </div>
                     </div>
 
-                  <div className="space-y-3 pt-8 border-t border-[#E5E7EB]">
-                    <button onClick={handleDownload} className="w-full py-5 rounded-2xl bg-[#111827] text-white font-bold hover:bg-black transition-all flex items-center justify-center gap-3 text-base shadow-xl shadow-black/10">
-                      <Download className="w-5 h-5" />
-                      {t.download}
-                    </button>
-                    <button 
-                      onClick={() => { 
-                        if (selectedCrop?.id === 'full-image') {
-                          setStep('choose');
-                        } else {
-                          setStep('select');
-                        }
-                        setAiRenderedImage(null); 
-                        setActiveAiStyle(null); 
-                      }} 
-                      className="w-full py-4 rounded-2xl bg-white border border-[#E5E7EB] text-[#6B7280] font-bold hover:bg-[#F9FAFB] transition-all flex items-center justify-center gap-2 text-sm"
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                      {t.back}
-                    </button>
-                  </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <button 
+                        onClick={() => { setStep('select'); setAiRenderedImage(null); setActiveAiStyle(null); }}
+                        className="py-4 bg-white text-[#6B7280] rounded-2xl font-bold border border-[#E5E7EB] hover:bg-[#F9FAFB] transition-all flex items-center justify-center gap-2"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                        {t.back}
+                      </button>
 
-                  <div className="p-6 bg-[#F9FAFB] rounded-3xl border border-[#E5E7EB]">
-                    <h4 className="text-xs font-bold text-[#111827] mb-2 uppercase tracking-widest flex items-center gap-2">
-                      <ImageIcon className="w-3.5 h-3.5 text-[#9CA3AF]" />
-                      {t.tipTitle}
-                    </h4>
-                    <p className="text-xs text-[#6B7280] leading-relaxed">{t.tipDesc}</p>
+                      <button 
+                        onClick={handleDownload}
+                        className="py-4 bg-[#111827] text-white rounded-2xl font-bold hover:bg-black transition-all flex items-center justify-center gap-2 shadow-lg shadow-black/5"
+                      >
+                        <Download className="w-4 h-4" />
+                        {t.download}
+                      </button>
+                    </div>
                   </div>
-                </div>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
       </main>
 
-      <footer className="mt-32 border-t border-[#E5E7EB] py-16">
-        <div className="max-w-5xl mx-auto px-8 text-center">
-          <p className="text-[#9CA3AF] text-[10px] uppercase tracking-[0.2em] font-medium">{t.footer}</p>
+      <footer className="max-w-5xl mx-auto px-8 py-12 border-t border-[#E5E7EB] mt-12">
+        <div className="flex flex-col items-center gap-4 text-center">
+          <p className="text-xs font-medium text-[#9CA3AF] tracking-wide uppercase">{t.footer}</p>
+          <div className="flex items-center gap-4">
+            <a href="#" className="w-8 h-8 rounded-lg bg-[#F3F4F6] flex items-center justify-center text-[#6B7280] hover:bg-[#111827] hover:text-white transition-all">
+              <Upload className="w-4 h-4" />
+            </a>
+            <a href="#" className="w-8 h-8 rounded-lg bg-[#F3F4F6] flex items-center justify-center text-[#6B7280] hover:bg-[#111827] hover:text-white transition-all">
+              <Globe className="w-4 h-4" />
+            </a>
+          </div>
         </div>
       </footer>
     </div>
