@@ -1,0 +1,5 @@
+{
+  "name": "MoeAvatar",
+  "description": "An ACG-style avatar generator that automatically detects and crops characters from images with stylized rendering options.",
+  "requestFramePermissions": []
+}
