@@ -32,7 +32,7 @@ async function urlToDataUrl(url: string): Promise<string> {
   });
 }
 
-async function openaiChat(messages: any[], responseFormat?: 'json_object') {
+async function openaiChat(messages: any[], responseFormat?: 'json_object', temperature?: number) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 60000);
 
@@ -47,6 +47,7 @@ async function openaiChat(messages: any[], responseFormat?: 'json_object') {
       body: JSON.stringify({
         model: config.analysisModel,
         messages,
+        temperature: temperature !== undefined ? temperature : 0.7,
         response_format: responseFormat ? { type: responseFormat } : undefined
       })
     });
@@ -380,11 +381,24 @@ export default function App() {
     if (isGeneratingRandom) return;
     setIsGeneratingRandom(true);
     try {
-      const prompt = "Generate a unique artistic style for an anime character avatar. Return a JSON object with 'en' (English name), 'zh' (Chinese name), and 'prompt' (detailed image transformation prompt). The style should be creative and visually distinct. IMPORTANT: The prompt MUST include instructions to maintain the original composition, framing, and character pose without changes. OUTPUT ONLY JSON.";
+      const vibes = [
+        'Cyberpunk', 'Cyber-organic', 'Neon Graffiti', 'Dreamy Pastel', 'Dark Gothic', 
+        'Vaporwave', 'Pixel Art', 'Ukiyo-e', 'Oil Painting', 'Retro 90s Anime', 
+        'Futuristic Mecha', 'Mystical Ethereal', 'Pencil Sketch', 'Vibrant Pop Art', 
+        'Monochrome Ink', 'Glitch Art', 'Stained Glass', 'Chibi/Kawaii', 'Fantasy RPG', 'Noir Silhouette',
+        'Synthwave', 'Steampunk', 'Cyber-Zen', 'Lofi Aesthetic', 'Abstract Geometry'
+      ];
+      const randomVibe = vibes[Math.floor(Math.random() * vibes.length)];
+      
+      const prompt = `Generate a unique artistic style for an anime character avatar, inspired by the vibe of "${randomVibe}". 
+Return a JSON object with 'en' (English name), 'zh' (Chinese name), and 'prompt' (detailed image transformation prompt). 
+The style should be creative and visually distinct. 
+IMPORTANT: The prompt MUST include instructions to maintain the original composition, framing, and character pose without changes. 
+OUTPUT ONLY JSON.`;
       
       const text = await openaiChat([
         { role: "user", content: prompt }
-      ], 'json_object');
+      ], 'json_object', 1.0);
       
       const styleData = JSON.parse(text || '{}');
       const newStyle = {
