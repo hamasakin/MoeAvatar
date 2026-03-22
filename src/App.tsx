@@ -417,6 +417,15 @@ OUTPUT ONLY JSON.`;
     }
   };
 
+  const deleteCustomStyle = (e: React.MouseEvent, styleId: string) => {
+    e.stopPropagation();
+    if (activeAiStyle === styleId) {
+      setActiveAiStyle(null);
+      setAiRenderedImage(null);
+    }
+    setCustomAiStyles(prev => prev.filter(s => s.id !== styleId));
+  };
+
   const applyAiStyle = async (styleId: string, stylesList = [...customAiStyles, ...AI_STYLES]) => {
     if (isAiRendering || !image) return;
     
@@ -853,17 +862,25 @@ OUTPUT ONLY JSON.`;
                         <div className="space-y-4 pt-4 border-t border-[#F3F4F6]">
                           <div className="grid grid-cols-4 gap-3">
                             {customAiStyles.map((style) => (
-                              <button
-                                key={style.id}
-                                onClick={() => applyAiStyle(style.id)}
-                                className={`aspect-square rounded-2xl text-[10px] font-bold flex flex-col items-center justify-center gap-2 transition-all border ${
-                                  activeAiStyle === style.id 
-                                    ? 'bg-[#10B981] text-white border-[#10B981] ring-4 ring-[#ECFDF5]' 
-                                    : 'bg-white text-[#6B7280] border-[#ECFDF5] hover:border-[#10B981]/30'
-                                }`}
-                              >
-                                {lang === 'zh' ? style.zh : style.en}
-                              </button>
+                              <div key={style.id} className="relative group/item">
+                                <button
+                                  onClick={() => applyAiStyle(style.id)}
+                                  className={`w-full aspect-square rounded-2xl text-[10px] font-bold flex flex-col items-center justify-center gap-2 transition-all border ${
+                                    activeAiStyle === style.id 
+                                      ? 'bg-[#10B981] text-white border-[#10B981] ring-4 ring-[#ECFDF5]' 
+                                      : 'bg-white text-[#6B7280] border-[#ECFDF5] hover:border-[#10B981]/30'
+                                  }`}
+                                >
+                                  {lang === 'zh' ? style.zh : style.en}
+                                </button>
+                                <button
+                                  onClick={(e) => deleteCustomStyle(e, style.id)}
+                                  className="absolute -top-1 -right-1 w-5 h-5 bg-[#EF4444] text-white rounded-full flex items-center justify-center opacity-0 group-hover/item:opacity-100 transition-opacity shadow-sm hover:bg-red-600 z-10"
+                                  title="Delete style"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </div>
                             ))}
                           </div>
                         </div>
